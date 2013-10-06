@@ -1,0 +1,2 @@
+Put your PHP files here. If all your PHP files have to be in DocumentRoot,
+put it in public folder.
