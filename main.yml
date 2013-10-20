@@ -1,0 +1,65 @@
+- include: playbooks/test-ansible/main.yml
+- hosts: $hosts
+  handlers:
+    - include: playbooks/test-ansible/playbooks/handlers.yml
+  tasks:
+    - name: Copy nginx config
+      template: src=templates/nginx.conf dest=/etc/nginx/nginx.conf mode=0644 owner=root
+      tags: app
+      notify:
+        - Restart nginx
+
+    - name: Create app user account
+      user: name=$app_account_username
+            home=/home/{{ app_account_username }}
+            shell=/bin/bash
+            state=present
+      tags: app
+
+    - name: Create webapps directory
+      file: path=/home/{{ app_account_username }}/webapps state=directory
+      sudo: yes
+      sudo_user: $app_account_username
+      tags: app
+
+    - name: Install required packages
+      apt: pkg={{ item }}
+      with_items:
+        - libapache2-mod-php5
+        - php5-gd 
+        - php5-sqlite
+      tags: app
+
+    - name: Create Drupal directories
+      file: path=/home/{{ app_account_username }}/webapps/drupal/{{ item }} state=directory
+      sudo: yes
+      sudo_user: $app_account_username
+      tags: drupal
+      with_items:
+        - apache2
+        - nginx
+        - app
+
+    - name: Create Drupal public dir
+      file: path=/home/{{ app_account_username }}/webapps/drupal/app/public state=directory
+      sudo: yes
+      sudo_user: $app_account_username
+      tags: drupal
+
+    - name: Create apache config
+      template: src=templates/apache2.conf dest=/home/{{ app_account_username }}/webapps/drupal/apache2/apache2.conf
+      tags: drupal
+      sudo: yes
+      sudo_user: $app_account_username
+
+    - name: Create nginx app config
+      template: src=templates/nginx-user.conf dest=/home/{{ app_account_username }}/webapps/drupal/nginx/nginx.conf
+      tags: drupal
+      sudo: yes
+      sudo_user: $app_account_username
+
+    - name: Create app apache2 start script
+      template: src=templates/apache2-start.sh dest=/home/{{ app_account_username }}/webapps/drupal/apache2/start.sh mode=0700
+      tags: drupal
+      sudo: yes
+      sudo_user: $app_account_username
